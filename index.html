@@ -197,6 +197,57 @@
             font-size: 1rem;
         }
 
+        .manual-form {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .manual-form h3 {
+            margin: 0 0 10px 0;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+
+        .manual-inputs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .manual-inputs input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .btn-manual-add {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-top: 5px;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+        }
+
     </style>
 </head>
 <body>
@@ -206,6 +257,15 @@
         <p class="subtitle">Selecciona lo que vas a comprar. Luego presiona "OK" al echarlo al carrito.</p>
         
         <button class="btn-clear" onclick="limpiarTodo()">🗑️ Vaciar Lista de Compras</button>
+
+        <div class="manual-form">
+            <h3>➕ Agregar Producto Personalizado</h3>
+            <div class="manual-inputs">
+                <input type="text" id="manual-nombre" placeholder="Nombre (ej. Queso de Hoja)">
+                <input type="number" id="manual-precio" placeholder="Precio (RD$)">
+            </div>
+            <button class="btn-manual-add" onclick="agregarProductoManual()">Agregar a Mi Inventario</button>
+        </div>
 
         <div id="app"></div>
     </div>
@@ -317,6 +377,7 @@
         let total = 0;
         let cantidades = {}; // Ahora guarda { id_producto: cantidad }
         let enCarrito = new Set();    
+        let productosManuales = [];
 
         const appDiv = document.getElementById('app');
         const totalAmountEl = document.getElementById('total-amount');
@@ -334,13 +395,19 @@
                 }
                 
                 enCarrito = new Set(datos.enCarrito);
+
+                if (datos.productosManuales) {
+                    productosManuales = datos.productosManuales;
+                    productosManuales.forEach(p => precios[p.id] = p.precio);
+                }
             }
         }
 
         function guardarDatos() {
             const datos = {
                 cantidades: cantidades,
-                enCarrito: Array.from(enCarrito)
+                enCarrito: Array.from(enCarrito),
+                productosManuales: productosManuales
             };
             localStorage.setItem('miCompraDR', JSON.stringify(datos));
         }
@@ -401,6 +468,52 @@
 
                 appDiv.appendChild(catDiv);
             });
+
+            // RENDERIZAR PRODUCTOS MANUALES
+            if (productosManuales.length > 0) {
+                const catDiv = document.createElement('div');
+                catDiv.className = 'category';
+                catDiv.innerHTML = `<h3>Productos Personalizados</h3>`;
+
+                productosManuales.forEach(prod => {
+                    const qty = cantidades[prod.id] || 0;
+                    const estaEnLista = qty > 0;
+                    const estaEnCarrito = enCarrito.has(prod.id);
+
+                    let rowClasses = 'product-item';
+                    if (estaEnLista) rowClasses += ' in-list';
+                    if (estaEnCarrito) rowClasses += ' in-cart';
+
+                    let btnAddClass = estaEnLista ? 'btn-add selected' : 'btn-add';
+                    let btnAddText = estaEnLista ? '✔️ Agregado' : '+ Lista';
+                    let btnOkText = estaEnCarrito ? '🛒 Listo' : 'OK';
+
+                    const prodDiv = document.createElement('div');
+                    prodDiv.className = rowClasses;
+                    prodDiv.id = `prod-row-${prod.id}`;
+
+                    prodDiv.innerHTML = `
+                        <div class="product-info">
+                            <span class="product-name">${prod.nombre}</span>
+                            <span class="product-price">RD$ ${prod.precio.toFixed(2)}</span>
+                            <button class="btn-delete" onclick="eliminarProductoManual(${prod.id})">🗑️ Eliminar de Mi Inventario</button>
+                        </div>
+                        <div class="actions">
+                            <div class="qty-controls">
+                                <button class="btn-qty" onclick="modificarCantidad(${prod.id}, -1)">-</button>
+                                <span class="qty-label" id="qty-${prod.id}">${qty || 1}</span>
+                                <button class="btn-qty" onclick="modificarCantidad(${prod.id}, 1)">+</button>
+                            </div>
+
+                            <button class="${btnAddClass}" id="btn-add-${prod.id}" onclick="toggleLista(${prod.id})">${btnAddText}</button>
+                            <button class="btn-ok" id="btn-ok-${prod.id}" onclick="toggleCarrito(${prod.id})">${btnOkText}</button>
+                        </div>
+                    `;
+                    catDiv.appendChild(prodDiv);
+                });
+
+                appDiv.appendChild(catDiv);
+            }
         }
 
         function calcularTotal() {
@@ -409,6 +522,52 @@
                 total += cantidades[id] * precios[id];
             }
             totalAmountEl.innerText = `RD$ ${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function agregarProductoManual() {
+            const nombreInput = document.getElementById('manual-nombre');
+            const precioInput = document.getElementById('manual-precio');
+
+            const nombre = nombreInput.value.trim();
+            const precio = parseFloat(precioInput.value);
+
+            if (!nombre || isNaN(precio) || precio <= 0) {
+                alert("Por favor, introduce un nombre y un precio válido.");
+                return;
+            }
+
+            const nuevoProd = {
+                id: Date.now(), // ID único basado en tiempo
+                nombre: nombre,
+                precio: precio
+            };
+
+            productosManuales.push(nuevoProd);
+            precios[nuevoProd.id] = nuevoProd.precio;
+
+            // Limpiar inputs
+            nombreInput.value = '';
+            precioInput.value = '';
+
+            guardarDatos();
+            renderizarApp();
+            alert("¡Producto agregado a tu inventario!");
+        }
+
+        function eliminarProductoManual(id) {
+            if (!confirm("¿Deseas eliminar este producto de tu inventario?")) return;
+
+            // Eliminar de productosManuales
+            productosManuales = productosManuales.filter(p => p.id !== id);
+
+            // Limpiar otros estados relacionados
+            delete precios[id];
+            delete cantidades[id];
+            enCarrito.delete(id);
+
+            guardarDatos();
+            renderizarApp();
+            calcularTotal();
         }
 
         // --- NUEVA FUNCIÓN PARA CAMBIAR CANTIDAD (+ / -) ---
