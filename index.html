@@ -92,6 +92,11 @@
             border-bottom: 2px solid var(--primary-color);
             padding-bottom: 5px;
             color: var(--primary-color);
+            user-select: none;
+        }
+
+        .category h3:hover {
+            opacity: 0.8;
         }
 
         .product-item {
@@ -215,10 +220,11 @@
             display: flex;
             gap: 10px;
             margin-bottom: 10px;
+            flex-wrap: wrap;
         }
 
         .manual-inputs input {
-            flex: 1;
+            flex: 1 1 150px;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -378,6 +384,7 @@
         let cantidades = {}; // Ahora guarda { id_producto: cantidad }
         let enCarrito = new Set();    
         let productosManuales = [];
+        let categoriasAbiertas = {}; // Para el colapsable
 
         const appDiv = document.getElementById('app');
         const totalAmountEl = document.getElementById('total-amount');
@@ -425,10 +432,20 @@
         function renderizarApp() {
             appDiv.innerHTML = ''; 
 
-            inventario.forEach(cat => {
+            inventario.forEach((cat, index) => {
+                const isOpen = categoriasAbiertas[cat.categoria];
                 const catDiv = document.createElement('div');
                 catDiv.className = 'category';
-                catDiv.innerHTML = `<h3>${cat.categoria}</h3>`;
+
+                const header = document.createElement('h3');
+                header.style.cursor = 'pointer';
+                header.innerHTML = `${isOpen ? '▼' : '▶'} ${cat.categoria}`;
+                header.onclick = () => toggleCategoria(cat.categoria);
+                catDiv.appendChild(header);
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'category-content';
+                if (!isOpen) contentDiv.style.display = 'none';
 
                 cat.productos.forEach(prod => {
                     const qty = cantidades[prod.id] || 0;
@@ -463,17 +480,29 @@
                             <button class="btn-ok" id="btn-ok-${prod.id}" onclick="toggleCarrito(${prod.id})">${btnOkText}</button>
                         </div>
                     `;
-                    catDiv.appendChild(prodDiv);
+                    contentDiv.appendChild(prodDiv);
                 });
 
+                catDiv.appendChild(contentDiv);
                 appDiv.appendChild(catDiv);
             });
 
             // RENDERIZAR PRODUCTOS MANUALES
             if (productosManuales.length > 0) {
+                const manualCatName = "Productos Personalizados";
+                const isOpen = categoriasAbiertas[manualCatName];
                 const catDiv = document.createElement('div');
                 catDiv.className = 'category';
-                catDiv.innerHTML = `<h3>Productos Personalizados</h3>`;
+
+                const header = document.createElement('h3');
+                header.style.cursor = 'pointer';
+                header.innerHTML = `${isOpen ? '▼' : '▶'} ${manualCatName}`;
+                header.onclick = () => toggleCategoria(manualCatName);
+                catDiv.appendChild(header);
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'category-content';
+                if (!isOpen) contentDiv.style.display = 'none';
 
                 productosManuales.forEach(prod => {
                     const qty = cantidades[prod.id] || 0;
@@ -509,11 +538,17 @@
                             <button class="btn-ok" id="btn-ok-${prod.id}" onclick="toggleCarrito(${prod.id})">${btnOkText}</button>
                         </div>
                     `;
-                    catDiv.appendChild(prodDiv);
+                    contentDiv.appendChild(prodDiv);
                 });
 
+                catDiv.appendChild(contentDiv);
                 appDiv.appendChild(catDiv);
             }
+        }
+
+        function toggleCategoria(nombre) {
+            categoriasAbiertas[nombre] = !categoriasAbiertas[nombre];
+            renderizarApp();
         }
 
         function calcularTotal() {
