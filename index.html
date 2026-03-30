@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Compra DR 🛒</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --in-cart-color: #ff4d4d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding-bottom: 80px;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        #total-amount {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .btn-clear {
+            background-color: #dc3545;
+            color: white;
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .category {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .category h3 {
+            margin-top: 0;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s;
+        }
+
+        .product-item:last-child {
+            border-bottom: none;
+        }
+
+        .product-info {
+            flex-grow: 1;
+        }
+
+        .product-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: block;
+        }
+
+        .product-price {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        button {
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .btn-add {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        .btn-add.selected {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-ok {
+            background-color: #e0e0e0;
+            color: #333;
+            display: none;
+        }
+        
+        .product-item.in-list .btn-ok {
+            display: inline-block;
+        }
+
+        .product-item.in-cart .btn-ok {
+            background-color: var(--in-cart-color);
+            color: white;
+        }
+
+        .product-item.in-cart .product-name {
+            text-decoration: line-through;
+            color: var(--in-cart-color);
+        }
+
+        .qty-controls {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 2px;
+            border: 1px solid #ddd;
+        }
+
+        .product-item.in-list .qty-controls {
+            display: flex;
+        }
+
+        .btn-qty {
+            background: white;
+            color: var(--primary-color);
+            border: 1px solid #ccc;
+            padding: 4px 10px;
+            font-size: 1.2rem;
+            border-radius: 3px;
+            line-height: 1;
+        }
+
+        .qty-label {
+            font-weight: bold;
+            min-width: 25px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Mi Súper 🇩🇴</h1>
+        <p class="subtitle">Selecciona lo que vas a comprar. Luego presiona "OK" al echarlo al carrito.</p>
+        
+        <button class="btn-clear" onclick="limpiarTodo()">🗑️ Vaciar Lista de Compras</button>
+
+        <div id="app"></div>
+    </div>
+
+    <header>
+        <h2>Total Estimado</h2>
+        <div id="total-amount">RD$ 0.00</div>
+    </header>
+
+    <script>
+        const inventario = [
+            {
+                categoria: "Desayuno y Panadería",
+                productos: [
+                    { id: 41, nombre: "Pan de Agua (Funda)", precio: 70 },
+                    { id: 42, nombre: "Pan Sobao (Funda)", precio: 70 },
+                    { id: 43, nombre: "Café Dominicano (1/2 lb)", precio: 210 },
+                    { id: 44, nombre: "Azúcar Crema (2 lb)", precio: 75 },
+                    { id: 4, nombre: "Avena (Funda)", precio: 110 },
+                    { id: 5, nombre: "Harina de Negrito", precio: 65 },
+                    { id: 6, nombre: "Maicena", precio: 45 }
+                ]
+            },
+            {
+                categoria: "Carnes, Pescados y Embutidos",
+                productos: [
+                    { id: 11, nombre: "Pollo Entero Fresco", precio: 320 },
+                    { id: 33, nombre: "Carne de Res Molida (1 lb)", precio: 250 },
+                    { id: 34, nombre: "Chuleta Ahumada (1 lb)", precio: 210 },
+                    { id: 32, nombre: "Pescado Mero/Chillo (1 lb)", precio: 350 },
+                    { id: 30, nombre: "Bacalao (1 lb)", precio: 220 },
+                    { id: 31, nombre: "Arenque Entero (1 lb)", precio: 190 },
+                    { id: 12, nombre: "Salami Super Especial", precio: 240 },
+                    { id: 28, nombre: "Jamón de Pavo (1 lb)", precio: 350 },
+                    { id: 29, nombre: "Jamón de Cerdo (1 lb)", precio: 280 },
+                    { id: 13, nombre: "Cartón de Huevos (30)", precio: 220 },
+                    { id: 15, nombre: "Queso de Freír (1 lb)", precio: 280 }
+                ]
+            },
+            {
+                categoria: "Víveres y Vegetales",
+                productos: [
+                    { id: 16, nombre: "Plátanos Verdes (10 unds)", precio: 250 },
+                    { id: 36, nombre: "Plátanos Maduros (5 unds)", precio: 125 },
+                    { id: 35, nombre: "Guineos Verdes (Mano de 10)", precio: 80 },
+                    { id: 17, nombre: "Yuca (3 lb)", precio: 90 },
+                    { id: 37, nombre: "Papas (3 lb)", precio: 120 },
+                    { id: 38, nombre: "Batata (3 lb)", precio: 105 },
+                    { id: 47, nombre: "Yautía Blanca (1 lb)", precio: 65 }, /* NUEVO VÍVERE */
+                    { id: 48, nombre: "Yautía Coco (1 lb)", precio: 75 },   /* NUEVO VÍVERE */
+                    { id: 49, nombre: "Ñame (1 lb)", precio: 60 },          /* NUEVO VÍVERE */
+                    { id: 18, nombre: "Cebolla Roja (1 lb)", precio: 65 },
+                    { id: 19, nombre: "Ajo (Malla pequeña)", precio: 100 },
+                    { id: 39, nombre: "Tomates Bugalú (1 lb)", precio: 60 },
+                    { id: 40, nombre: "Ají Morrón (1 lb)", precio: 90 }
+                ]
+            },
+            {
+                categoria: "Cereales, Granos y Enlatados",
+                productos: [
+                    { id: 1, nombre: "Arroz Selecto (10 lb)", precio: 380 },
+                    { id: 2, nombre: "Habichuelas Rojas (1 lb)", precio: 75 },
+                    { id: 3, nombre: "Guandules en Lata", precio: 85 },
+                    { id: 24, nombre: "Maíz en Lata", precio: 70 },
+                    { id: 25, nombre: "Tuna en Agua/Aceite", precio: 85 }
+                ]
+            },
+            {
+                categoria: "Aceites y Sazones",
+                productos: [
+                    { id: 7, nombre: "Aceite de Soya (Galón)", precio: 580 },
+                    { id: 8, nombre: "Aceite de Oliva (Botella)", precio: 350 },
+                    { id: 26, nombre: "Pasta de Tomate (Salsa)", precio: 65 },
+                    { id: 27, nombre: "Vinagre (Botella)", precio: 45 },
+                    { id: 9, nombre: "Sopita (Caja de 12)", precio: 90 },
+                    { id: 10, nombre: "Sazón Líquido", precio: 120 }
+                ]
+            },
+            {
+                categoria: "Lácteos y Limpieza",
+                productos: [
+                    { id: 14, nombre: "Leche Entera (Litro)", precio: 75 },
+                    { id: 20, nombre: "Jabón de Cuaba (Paquete)", precio: 85 },
+                    { id: 21, nombre: "Cloro (Galón)", precio: 110 },
+                    { id: 46, nombre: "Desinfectante para pisos", precio: 80 },
+                    { id: 22, nombre: "Detergente en Polvo", precio: 210 },
+                    { id: 23, nombre: "Papel Higiénico (4 rollos)", precio: 180 },
+                    { id: 45, nombre: "Pasta Dental", precio: 120 }
+                ]
+            }
+        ];
+
+        // Diccionario rápido de precios para no tener que buscarlos cada vez
+        const precios = {};
+        inventario.forEach(cat => cat.productos.forEach(p => precios[p.id] = p.precio));
+
+        let total = 0;
+        let cantidades = {}; // Ahora guarda { id_producto: cantidad }
+        let enCarrito = new Set();    
+
+        const appDiv = document.getElementById('app');
+        const totalAmountEl = document.getElementById('total-amount');
+
+        function cargarDatos() {
+            const datosGuardados = localStorage.getItem('miCompraDR');
+            if (datosGuardados) {
+                const datos = JSON.parse(datosGuardados);
+                
+                // Compatibilidad si venimos de la versión anterior que usaba Array
+                if (datos.listaCompras && Array.isArray(datos.listaCompras)) {
+                    datos.listaCompras.forEach(id => cantidades[id] = 1);
+                } else if (datos.cantidades) {
+                    cantidades = datos.cantidades;
+                }
+                
+                enCarrito = new Set(datos.enCarrito);
+            }
+        }
+
+        function guardarDatos() {
+            const datos = {
+                cantidades: cantidades,
+                enCarrito: Array.from(enCarrito)
+            };
+            localStorage.setItem('miCompraDR', JSON.stringify(datos));
+        }
+
+        function limpiarTodo() {
+            if(confirm("¿Estás seguro de que deseas vaciar tu lista y empezar de cero?")) {
+                cantidades = {};
+                enCarrito.clear();
+                calcularTotal();
+                guardarDatos();
+                renderizarApp();
+            }
+        }
+
+        function renderizarApp() {
+            appDiv.innerHTML = ''; 
+
+            inventario.forEach(cat => {
+                const catDiv = document.createElement('div');
+                catDiv.className = 'category';
+                catDiv.innerHTML = `<h3>${cat.categoria}</h3>`;
+
+                cat.productos.forEach(prod => {
+                    const qty = cantidades[prod.id] || 0;
+                    const estaEnLista = qty > 0;
+                    const estaEnCarrito = enCarrito.has(prod.id);
+
+                    let rowClasses = 'product-item';
+                    if (estaEnLista) rowClasses += ' in-list';
+                    if (estaEnCarrito) rowClasses += ' in-cart';
+
+                    let btnAddClass = estaEnLista ? 'btn-add selected' : 'btn-add';
+                    let btnAddText = estaEnLista ? '✔️ Agregado' : '+ Lista';
+                    let btnOkText = estaEnCarrito ? '🛒 Listo' : 'OK';
+
+                    const prodDiv = document.createElement('div');
+                    prodDiv.className = rowClasses;
+                    prodDiv.id = `prod-row-${prod.id}`;
+                    
+                    prodDiv.innerHTML = `
+                        <div class="product-info">
+                            <span class="product-name">${prod.nombre}</span>
+                            <span class="product-price">RD$ ${prod.precio.toFixed(2)}</span>
+                        </div>
+                        <div class="actions">
+                            <div class="qty-controls">
+                                <button class="btn-qty" onclick="modificarCantidad(${prod.id}, -1)">-</button>
+                                <span class="qty-label" id="qty-${prod.id}">${qty || 1}</span>
+                                <button class="btn-qty" onclick="modificarCantidad(${prod.id}, 1)">+</button>
+                            </div>
+                            
+                            <button class="${btnAddClass}" id="btn-add-${prod.id}" onclick="toggleLista(${prod.id})">${btnAddText}</button>
+                            <button class="btn-ok" id="btn-ok-${prod.id}" onclick="toggleCarrito(${prod.id})">${btnOkText}</button>
+                        </div>
+                    `;
+                    catDiv.appendChild(prodDiv);
+                });
+
+                appDiv.appendChild(catDiv);
+            });
+        }
+
+        function calcularTotal() {
+            total = 0;
+            for (let id in cantidades) {
+                total += cantidades[id] * precios[id];
+            }
+            totalAmountEl.innerText = `RD$ ${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        // --- NUEVA FUNCIÓN PARA CAMBIAR CANTIDAD (+ / -) ---
+        function modificarCantidad(id, delta) {
+            if (!cantidades[id]) return; // Si no está en la lista, ignorar
+            
+            cantidades[id] += delta;
+            
+            if (cantidades[id] <= 0) {
+                // Si la cantidad llega a 0, lo quitamos de la lista por completo
+                toggleLista(id);
+            } else {
+                // Actualizamos el número en pantalla, calculamos y guardamos
+                document.getElementById(`qty-${id}`).innerText = cantidades[id];
+                calcularTotal();
+                guardarDatos();
+            }
+        }
+
+        function toggleLista(id) {
+            const btnAdd = document.getElementById(`btn-add-${id}`);
+            const row = document.getElementById(`prod-row-${id}`);
+
+            if (cantidades[id]) {
+                // Quitar de la lista
+                delete cantidades[id];
+                enCarrito.delete(id); 
+                
+                btnAdd.classList.remove('selected');
+                btnAdd.innerText = '+ Lista';
+                row.classList.remove('in-list', 'in-cart');
+            } else {
+                // Agregar a la lista por primera vez (Cantidad = 1)
+                cantidades[id] = 1;
+                document.getElementById(`qty-${id}`).innerText = 1; // Reseteamos el texto a 1
+                
+                btnAdd.classList.add('selected');
+                btnAdd.innerText = '✔️ Agregado';
+                row.classList.add('in-list');
+            }
+
+            calcularTotal();
+            guardarDatos(); 
+        }
+
+        function toggleCarrito(id) {
+            const row = document.getElementById(`prod-row-${id}`);
+            const btnOk = document.getElementById(`btn-ok-${id}`);
+
+            if (enCarrito.has(id)) {
+                enCarrito.delete(id);
+                row.classList.remove('in-cart');
+                btnOk.innerText = 'OK';
+            } else {
+                enCarrito.add(id);
+                row.classList.add('in-cart');
+                btnOk.innerText = '🛒 Listo';
+            }
+            guardarDatos(); 
+        }
+
+        // INICIO DE LA APLICACIÓN
+        cargarDatos();      
+        renderizarApp();    
+        calcularTotal();  
+
+    </script>
+</body>
+</html>
